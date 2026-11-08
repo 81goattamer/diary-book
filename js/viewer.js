@@ -11,6 +11,10 @@
   var PARA_MS = 150;          // パラパラめくり1枚あたり
   var PARA_TOTAL_MS = 2000;   // パラパラめくり全体の上限
   var EASE = 'cubic-bezier(.42,.08,.3,1)';
+  var EASE_IN = 'cubic-bezier(.45,0,1,1)';   // 表紙を開いてそのままめくりに続けるとき（最後に減速しない）
+  var EASE_OUT = 'cubic-bezier(0,0,.3,1)';   // パラパラめくりの最後の1枚（ゆっくり止まる）
+  var OPEN_INTO_FLIP_MS = 700;                // パラパラめくりに続くときの表紙の開き
+  var LAST_FLIP_MS = 300;                     // パラパラめくりの最後の1枚
 
   var TEXT = {
     future: 'これからの未来はお楽しみに',
@@ -383,7 +387,7 @@
       anims.push(el.inner.animate([
         { transform: coverFrom ? 'translateX(-25%)' : 'translateX(0)' },
         { transform: coverTo ? 'translateX(-25%)' : 'translateX(0)' }
-      ], { duration: dur, easing: EASE, fill: 'forwards' }));
+      ], { duration: dur, easing: opt.easing || EASE, fill: 'forwards' }));
     }
 
     return Promise.all(anims.map(function (a) { return a.finished; })).then(function () {
@@ -407,29 +411,32 @@
     });
   }
 
-  /** パスワード入力後：本を開き、開始月から今日の月までパラパラとめくる */
+  /**
+   * パスワード入力後：本を開き、止まらずにそのまま開始月から今日の月までパラパラとめくる。
+   * 表紙は加速しながら開き（最後に減速しない）、めくりは一定の速さ、今日の月の1枚だけ減速して止まる。
+   */
   function openWithFlipThrough() {
     var today = D.today();
     var todayIdx = indexOfMonth(D.monthOf(today));
     var count = todayIdx - 1;
-    return flip(1, { select: count === 0 ? today : undefined }).then(function () {
-      if (count <= 0) return;
-      var per = Math.min(PARA_MS, PARA_TOTAL_MS / count);
-      var chain = Promise.resolve();
-      for (var i = 2; i <= todayIdx; i++) {
-        (function (i) {
-          chain = chain.then(function () {
-            return flip(i, {
-              duration: per,
-              easing: 'linear',
-              sound: Math.max(0.05, per / 1000),
-              select: i === todayIdx ? today : undefined
-            });
+    if (count <= 0) return flip(1, { select: today });
+
+    var per = Math.min(PARA_MS, PARA_TOTAL_MS / count);
+    var chain = flip(1, { duration: OPEN_INTO_FLIP_MS, easing: EASE_IN });
+    for (var i = 2; i <= todayIdx; i++) {
+      (function (i) {
+        var last = i === todayIdx;
+        chain = chain.then(function () {
+          return flip(i, {
+            duration: last ? Math.max(per, LAST_FLIP_MS) : per,
+            easing: last ? EASE_OUT : 'linear',
+            sound: Math.max(0.05, per / 1000),
+            select: last ? today : undefined
           });
-        })(i);
-      }
-      return chain;
-    });
+        });
+      })(i);
+    }
+    return chain;
   }
 
   /* ---------- 操作 ---------- */
