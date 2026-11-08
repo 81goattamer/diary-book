@@ -1,0 +1,663 @@
+/* 閲覧用：革張りのアンティーク調の本
+ * 質感は CSS のグラデーションと SVG フィルタ（feTurbulence）のノイズで表現する。影は使わない。 */
+
+:root {
+  /* 革のシボ（細かい凹凸） */
+  --grain-leather: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.10 0 0 0 0 0.05 0 0 0 0 0.02 0 0 0 0.75 -0.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  /* 革のまだら */
+  --mottle-leather: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.06 0 0 0 0 0.02 0 0 0 0.9 -0.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+  /* 紙の繊維 */
+  --grain-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.35 -0.08'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)'/%3E%3C/svg%3E");
+  /* 紙のしみ */
+  --stain-paper: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.40 0 0 0 0 0.20 0 0 0 0.5 -0.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)'/%3E%3C/svg%3E");
+
+  --leather-base: radial-gradient(ellipse at 35% 25%, #7b4a2a 0%, #5e3520 40%, #42231a 75%, #2f1811 100%);
+  --paper-base: linear-gradient(180deg, #f6edd6 0%, #f1e5c8 55%, #eadbb8 100%);
+  --gold: #c9a45c;
+  --gold-light: #e6cd8f;
+  --ink: #3b2a1c;
+  --ink-soft: #6f5a44;
+  --accent: #8a4b2a;
+  --serif: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif;
+}
+
+body {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, #3a2a1f 0%, #22170f 70%, #160e09 100%);
+  color: var(--ink);
+  font-family: var(--serif);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+}
+
+/* ---------- 本 ---------- */
+
+.book {
+  position: absolute;
+  left: 50%;
+  top: var(--book-top, 6vh);
+  width: calc(var(--bh, 560px) * 1.44);
+  height: var(--bh, 560px);
+  margin-left: calc(var(--bh, 560px) * -0.72);
+  font-size: calc(var(--bh, 560px) / 34);
+}
+
+.book-inner {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.book-inner.closed {
+  transform: translateX(-25%);
+}
+
+.slot {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+}
+
+.slot-left { left: 0; }
+.slot-right { left: 50%; }
+
+/* 半ページ（革の台紙＋紙） */
+.half {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: var(--grain-leather), var(--mottle-leather), var(--leather-base);
+  background-size: 260px 260px, 600px 600px, cover;
+}
+
+.half-left { border-radius: 1.2% 0 0 1.2% / 0.9% 0 0 0.9%; }
+.half-right { border-radius: 0 1.2% 1.2% 0 / 0 0.9% 0.9% 0; }
+
+.paper {
+  position: absolute;
+  top: 3.2%;
+  bottom: 3.2%;
+  background: var(--grain-paper), var(--stain-paper), var(--paper-base);
+  background-size: 300px 300px, 100% 100%, cover;
+  color: var(--ink);
+  overflow: hidden;
+}
+
+.half-left .paper { left: 4.5%; right: 0; }
+.half-right .paper { left: 0; right: 4.5%; }
+
+/* 綴じ目近くの紙の色の沈み（影ではなく紙の色調） */
+.half-left .paper::after,
+.half-right .paper::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 7%;
+  pointer-events: none;
+}
+
+.half-left .paper::after {
+  right: 0;
+  background: linear-gradient(90deg, rgba(120, 85, 45, 0) 0%, rgba(120, 85, 45, 0.22) 100%);
+}
+
+.half-right .paper::after {
+  left: 0;
+  background: linear-gradient(270deg, rgba(120, 85, 45, 0) 0%, rgba(120, 85, 45, 0.22) 100%);
+}
+
+.page-inner {
+  position: absolute;
+  inset: 0;
+  padding: 1.6em 1.8em 1.4em;
+  display: flex;
+  flex-direction: column;
+}
+
+.half-left .page-inner { padding-right: 1.6em; }
+.half-right .page-inner { padding-left: 1.6em; }
+
+/* ---------- 表紙 ---------- */
+
+.cover {
+  cursor: pointer;
+  border-radius: 0 2% 2% 0 / 0 1.4% 1.4% 0;
+}
+
+.cover::before {
+  /* 背（綴じ側）の帯 */
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 7%;
+  background: linear-gradient(90deg, rgba(20, 10, 5, 0.45) 0%, rgba(20, 10, 5, 0.15) 70%, rgba(230, 205, 143, 0.12) 100%);
+}
+
+.cover-frame {
+  position: absolute;
+  top: 6%;
+  bottom: 6%;
+  left: 13%;
+  right: 7%;
+  border: 0.18em solid var(--gold);
+  outline: 0.08em solid rgba(201, 164, 92, 0.7);
+  outline-offset: -0.55em;
+  border-radius: 0.3em;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2em;
+  text-align: center;
+  padding: 2em 1.6em;
+}
+
+.cover-frame::before,
+.cover-frame::after {
+  content: "❦";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--gold);
+  font-size: 1.6em;
+  line-height: 1;
+}
+
+.cover-frame::before { top: 1.1em; }
+.cover-frame::after { bottom: 1.1em; transform: translateX(-50%) rotate(180deg); }
+
+.cover-title {
+  color: var(--gold-light);
+  font-size: 2.3em;
+  letter-spacing: 0.12em;
+  line-height: 1.35;
+  word-break: break-word;
+  background: linear-gradient(180deg, #f3e2b0 0%, #d6b46a 45%, #a9823f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cover-rule {
+  width: 40%;
+  height: 0;
+  border-top: 0.08em solid var(--gold);
+  border-bottom: 0.08em solid var(--gold);
+  padding-top: 0.18em;
+}
+
+/* ---------- めくれる葉 ---------- */
+
+.leaf {
+  position: absolute;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  z-index: 5;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.leaf-right { left: 50%; transform-origin: 0 50%; }
+.leaf-left { left: 0; transform-origin: 100% 50%; }
+
+.face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.face-back {
+  transform: rotateY(180deg);
+}
+
+/* ---------- カレンダー（左ページ） ---------- */
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6em;
+  margin-bottom: 0.8em;
+}
+
+.cal-month {
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 1.55em;
+  letter-spacing: 0.06em;
+  padding: 0.1em 0.2em;
+  border-bottom: 0.06em solid rgba(138, 75, 42, 0.5);
+}
+
+.cal-month .caret {
+  font-size: 0.55em;
+  margin-left: 0.4em;
+  color: var(--accent);
+  vertical-align: middle;
+}
+
+.chip-btn {
+  border: 0.07em solid rgba(138, 75, 42, 0.6);
+  background: rgba(255, 250, 238, 0.55);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.3em 0.9em;
+  font-size: 0.9em;
+}
+
+.chip-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fbf3df;
+}
+
+.cal-week,
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.3em;
+}
+
+.cal-week {
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--ink-soft);
+  margin-bottom: 0.3em;
+}
+
+.cal-week span:first-child { color: #9a3b2b; }
+.cal-week span:last-child { color: #3b5a8a; }
+
+.cal-grid {
+  flex: 1;
+  grid-template-rows: repeat(6, 1fr);
+  min-height: 0;
+}
+
+.day {
+  border: 0.07em solid rgba(110, 80, 50, 0.3);
+  border-radius: 0.3em;
+  font-size: 1em;
+  padding: 0.25em 0.35em;
+  text-align: left;
+  vertical-align: top;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+/* 条件に合う日記がある日は白 */
+.day.on {
+  background: #fffdf7;
+  color: var(--ink);
+}
+
+/* それ以外は灰色 */
+.day.off {
+  background: #c8c2b7;
+  color: #5f574d;
+}
+
+.day.selected {
+  outline: 0.16em solid var(--accent);
+  outline-offset: -0.16em;
+}
+
+/* ---------- ポップオーバー（月選択・タグ選択） ---------- */
+
+.popover {
+  position: absolute;
+  left: 1.6em;
+  right: 1.6em;
+  top: 4.2em;
+  max-height: calc(100% - 5.6em);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 3;
+  background: var(--grain-paper), #fbf4e2;
+  background-size: 300px 300px, auto;
+  border: 0.1em solid var(--accent);
+  border-radius: 0.4em;
+  padding: 1em;
+}
+
+.popover-title {
+  font-size: 0.95em;
+  color: var(--ink-soft);
+  margin: 0 0 0.6em;
+}
+
+.month-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4em;
+}
+
+.month-list .chip-btn {
+  border-radius: 0.3em;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45em;
+}
+
+.popover-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.9em;
+}
+
+.popover-empty {
+  color: var(--ink-soft);
+  font-size: 0.95em;
+}
+
+/* ---------- 日記（右ページ） ---------- */
+
+.diary-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding-right: 0.3em;
+}
+
+.diary-date {
+  font-size: 1em;
+  color: var(--ink-soft);
+  letter-spacing: 0.05em;
+  padding-bottom: 0.4em;
+  border-bottom: 0.06em solid rgba(138, 75, 42, 0.45);
+}
+
+.diary-title {
+  font-size: 1.5em;
+  font-weight: normal;
+  margin: 0.55em 0 0.35em;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.diary-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+  margin-bottom: 0.7em;
+}
+
+.tag {
+  font-size: 0.8em;
+  color: var(--accent);
+  border: 0.07em solid rgba(138, 75, 42, 0.55);
+  border-radius: 999px;
+  padding: 0.1em 0.7em;
+}
+
+.photo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 13em;
+  margin: 0.3em 0 0.9em;
+  background: rgba(90, 60, 30, 0.08);
+  border: 0.06em solid rgba(110, 80, 50, 0.25);
+}
+
+.photo img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+  -webkit-user-drag: none;
+}
+
+.photo-nav {
+  position: absolute;
+  top: 50%;
+  margin-top: -1.1em;
+  width: 2.2em;
+  height: 2.2em;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(43, 29, 20, 0.62);
+  color: #fbf3df;
+  font-size: 1.1em;
+  line-height: 2.2em;
+  padding: 0;
+}
+
+.photo-prev { left: 0.4em; }
+.photo-next { right: 0.4em; }
+
+.diary-body {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.85;
+  font-size: 1em;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.diary-note {
+  margin: auto;
+  text-align: center;
+  font-size: 1.25em;
+  color: var(--ink-soft);
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diary-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 最後のメッセージ（見開きの中央） ---------- */
+
+.spread-wide {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 200%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2em 12%;
+}
+
+.half-left .spread-wide { left: 0; }
+.half-right .spread-wide { left: -100%; }
+
+.message-text {
+  max-width: 100%;
+  font-size: 1.45em;
+  line-height: 2.1;
+  letter-spacing: 0.06em;
+  text-align: center;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--ink);
+}
+
+/* ---------- 設定画面 ---------- */
+
+.settings-title {
+  font-size: 1.6em;
+  font-weight: normal;
+  letter-spacing: 0.3em;
+  margin: 0 0 1em;
+  padding-bottom: 0.4em;
+  border-bottom: 0.06em solid rgba(138, 75, 42, 0.45);
+}
+
+.setting-row {
+  margin-bottom: 1.6em;
+}
+
+.setting-row h3 {
+  font-size: 1.05em;
+  font-weight: normal;
+  margin: 0 0 0.6em;
+}
+
+.setting-row p {
+  font-size: 0.85em;
+  color: var(--ink-soft);
+  margin: 0 0 0.7em;
+  line-height: 1.6;
+}
+
+.setting-msg {
+  font-size: 0.9em;
+  color: #9a3b2b;
+  white-space: pre-wrap;
+}
+
+.btn {
+  display: inline-block;
+  border: 0.07em solid var(--gold);
+  background: linear-gradient(180deg, #6a3d24 0%, #4b2a18 100%);
+  color: #f6e6bd;
+  border-radius: 0.35em;
+  padding: 0.45em 1.2em;
+  font-size: 1em;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: linear-gradient(180deg, #7a2a1f 0%, #561b13 100%);
+}
+
+/* ---------- 表紙の下の欄 ---------- */
+
+.cover-panel {
+  position: absolute;
+  left: 50%;
+  bottom: 2.5vh;
+  transform: translateX(-50%);
+  width: min(560px, 80vw);
+  color: #f1e3c2;
+  text-align: center;
+  font-size: 16px;
+}
+
+.dropzone {
+  border: 2px dashed rgba(201, 164, 92, 0.7);
+  border-radius: 10px;
+  padding: 10px 16px 12px;
+  background: rgba(20, 12, 7, 0.35);
+}
+
+.dropzone.dragover {
+  background: rgba(201, 164, 92, 0.2);
+}
+
+.dropzone-text {
+  margin: 0 0 4px;
+}
+
+.dropzone-sub {
+  margin: 0 0 8px;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.pw-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pw-label {
+  letter-spacing: 0.1em;
+}
+
+.pw-input {
+  width: 12em;
+  font-size: 18px;
+  padding: 6px 10px;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  background: #f8efd9;
+  color: var(--ink);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.panel-error {
+  margin: 8px 0 0;
+  color: #ffb9a0;
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+/* ---------- 画面端のボタン ---------- */
+
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  width: 52px;
+  height: 96px;
+  margin-top: -48px;
+  border: 0;
+  background: none;
+  color: var(--gold-light);
+  font-size: 64px;
+  line-height: 1;
+  padding: 0;
+  z-index: 20;
+  opacity: 0.85;
+}
+
+.nav-prev { left: max(6px, env(safe-area-inset-left)); }
+.nav-next { right: max(6px, env(safe-area-inset-right)); }
+
+.sound-toggle {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  z-index: 30;
+  border: 1px solid rgba(201, 164, 92, 0.75);
+  background: rgba(20, 12, 7, 0.45);
+  color: var(--gold-light);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}

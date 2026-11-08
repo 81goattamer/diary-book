@@ -1,0 +1,42 @@
+/* 両アプリ共通：縦向きオーバーレイなど */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+/* 縦長の画面（縦横比で判定）では全体を覆って操作できないようにする */
+.rotate-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #2b1d14;
+  color: #f3e6c8;
+  font-family: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", serif;
+  font-size: 22px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  touch-action: none;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  .rotate-overlay {
+    display: flex;
+  }
+}

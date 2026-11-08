@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="diary book">
+  <meta name="theme-color" content="#2b1d14">
+  <meta name="referrer" content="no-referrer">
+  <title>diary book</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/viewer.css">
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="book" id="book">
+      <div class="book-inner closed" id="bookInner">
+        <div class="slot slot-left" id="slotLeft"></div>
+        <div class="slot slot-right" id="slotRight"></div>
+      </div>
+    </div>
+
+    <!-- 表紙の下：ZIP の読み込み欄（データがないとき） -->
+    <div class="cover-panel" id="loadPanel" hidden>
+      <div class="dropzone" id="dropzone">
+        <p class="dropzone-text">日記データ（DIARY_BOOK_DATA.zip）を読み込んでください</p>
+        <p class="dropzone-sub">ここにドラッグ＆ドロップ、または</p>
+        <label class="btn">ファイルを選択<input type="file" id="loadInput" accept=".zip,application/zip" hidden></label>
+        <p class="panel-error" id="loadError" hidden></p>
+      </div>
+    </div>
+
+    <!-- 表紙の下：パスワード入力 -->
+    <form class="cover-panel" id="pwPanel" hidden autocomplete="off">
+      <div class="pw-box">
+        <label class="pw-label" for="pwInput">パスワード</label>
+        <input class="pw-input" id="pwInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="btn" type="submit">開く</button>
+      </div>
+      <p class="panel-error" id="pwError" hidden>パスワードが違います</p>
+    </form>
+
+    <button class="nav-arrow nav-prev" id="prevBtn" type="button" aria-label="前のページ" hidden>&#x2039;</button>
+    <button class="nav-arrow nav-next" id="nextBtn" type="button" aria-label="次のページ" hidden>&#x203A;</button>
+    <button class="sound-toggle" id="soundBtn" type="button" aria-label="効果音の切り替え"></button>
+  </div>
+
+  <input type="file" id="reimportInput" accept=".zip,application/zip" hidden>
+
+  <div class="rotate-overlay">横向きにしてご覧ください</div>
+
+  <script src="lib/jszip.min.js"></script>
+  <script src="lib/papaparse.min.js"></script>
+  <script src="common/date.js"></script>
+  <script src="common/csv.js"></script>
+  <script src="common/zip-io.js"></script>
+  <script src="common/storage.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/viewer.js"></script>
+</body>
+</html>
