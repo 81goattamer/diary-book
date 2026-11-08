@@ -82,8 +82,27 @@
     return stringifyRows(rows);
   }
 
+  /**
+   * CSV ファイル（File / Blob）をテキストにする。
+   * UTF-8 として読めなければ Shift-JIS として読む（Excel で保存した CSV のため）。
+   */
+  function readText(file) {
+    return file.arrayBuffer().then(function (buf) {
+      try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+      } catch (e) {
+        try {
+          return new TextDecoder('shift_jis').decode(buf);
+        } catch (e2) {
+          throw FormatError('CSV の文字コードを読み取れません（UTF-8 で保存してください）');
+        }
+      }
+    });
+  }
+
   window.DiaryCsv = {
     SETTING_FILE: SETTING_FILE,
+    readText: readText,
     MST_FILE: MST_FILE,
     parseRows: parseRows,
     stringifyRows: stringifyRows,

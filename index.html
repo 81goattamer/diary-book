@@ -34,11 +34,12 @@
       </div>
     </div>
 
-    <!-- 表紙の下：パスワード入力 -->
-    <form class="cover-panel" id="pwPanel" hidden autocomplete="off">
+    <!-- 表紙の上（タイトルの下）：パスワード入力
+         ブラウザのパスワード保存・自動入力を出さないよう type="text" にして文字を伏せ字で表示する -->
+    <form class="pw-panel" id="pwPanel" hidden autocomplete="off">
+      <label class="pw-label" for="pwInput">パスワード</label>
       <div class="pw-box">
-        <label class="pw-label" for="pwInput">パスワード</label>
-        <input class="pw-input" id="pwInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <input class="pw-input" id="pwInput" type="text" name="diary-key" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore>
         <button class="btn" type="submit">開く</button>
       </div>
       <p class="panel-error" id="pwError" hidden>パスワードが違います</p>

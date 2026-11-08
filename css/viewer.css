@@ -86,7 +86,7 @@ button {
   inset: 0;
   overflow: hidden;
   background: var(--grain-leather), var(--mottle-leather), var(--leather-base);
-  background-size: 260px 260px, 600px 600px, cover;
+  background-size: 260px 260px, 100% 100%, cover;
 }
 
 .half-left { border-radius: 1.2% 0 0 1.2% / 0.9% 0 0 0.9%; }
@@ -381,6 +381,36 @@ button {
   font-size: 0.95em;
 }
 
+/* ---------- スクロールバー（紙になじむ細い茶色） ---------- */
+
+.diary-scroll,
+.popover {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(122, 74, 42, 0.45) transparent;
+}
+
+/* Safari など scrollbar-color に対応しないブラウザ向け */
+.diary-scroll::-webkit-scrollbar,
+.popover::-webkit-scrollbar {
+  width: 6px;
+}
+
+.diary-scroll::-webkit-scrollbar-track,
+.popover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.diary-scroll::-webkit-scrollbar-thumb,
+.popover::-webkit-scrollbar-thumb {
+  background: rgba(122, 74, 42, 0.45);
+  border-radius: 3px;
+}
+
+.diary-scroll::-webkit-scrollbar-button,
+.popover::-webkit-scrollbar-button {
+  display: none;
+}
+
 /* ---------- 日記（右ページ） ---------- */
 
 .diary-scroll {
@@ -597,27 +627,54 @@ button {
   opacity: 0.8;
 }
 
+/* パスワード欄は閉じた表紙の上、タイトルの下に重ねる（閉じた本は画面中央にある） */
+.pw-panel {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--book-top, 6vh) + var(--bh, 560px) * 0.6);
+  transform: translateX(-50%);
+  width: calc(var(--bh, 560px) * 0.72 * 0.6);
+  z-index: 10;
+  text-align: center;
+  font-size: calc(var(--bh, 560px) / 34);
+  color: var(--gold-light);
+}
+
 .pw-box {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
+  gap: 0.5em;
 }
 
 .pw-label {
-  letter-spacing: 0.1em;
+  display: block;
+  letter-spacing: 0.2em;
+  margin-bottom: 0.5em;
+  font-size: 0.95em;
 }
 
 .pw-input {
-  width: 12em;
-  font-size: 18px;
-  padding: 6px 10px;
+  flex: 1;
+  min-width: 0;
+  font-size: max(16px, 1.05em); /* iOS で入力時に拡大されないよう 16px 以上 */
+  padding: 0.35em 0.6em;
   border: 1px solid var(--gold);
-  border-radius: 6px;
+  border-radius: 0.35em;
   background: #f8efd9;
   color: var(--ink);
+  -webkit-text-security: disc;
   -webkit-user-select: text;
   user-select: text;
+}
+
+.pw-panel .btn {
+  padding: 0.4em 0.9em;
+  white-space: nowrap;
+}
+
+.pw-panel .panel-error {
+  margin-top: 0.5em;
+  font-size: 0.85em;
 }
 
 .panel-error {

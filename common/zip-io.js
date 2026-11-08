@@ -75,5 +75,29 @@
     return zip.generateAsync({ type: 'blob', mimeType: 'application/zip', compression: 'DEFLATE' });
   }
 
-  window.DiaryZip = { ZIP_NAME: ZIP_NAME, read: read, write: write };
+  /**
+   * 画像だけを入れた ZIP から、names に挙げたファイル名の画像を取り出す。
+   * ZIP 内のフォルダ構成は問わず、ファイル名（最後の / より後ろ）で探す。
+   * @returns {Promise<Object<string, Blob>>} 見つかった分だけ
+   */
+  function readImages(file, names) {
+    var wanted = {};
+    names.forEach(function (n) { wanted[n] = true; });
+    return JSZip.loadAsync(file).catch(function () {
+      throw DiaryCsv.FormatError('画像 ZIP を開けませんでした');
+    }).then(function (zip) {
+      var images = {};
+      var jobs = [];
+      zip.forEach(function (path, f) {
+        if (f.dir || path.indexOf('__MACOSX/') === 0) return;
+        var name = baseName(path);
+        if (!wanted[name] || images[name]) return;
+        images[name] = true;
+        jobs.push(f.async('blob').then(function (blob) { images[name] = blob; }));
+      });
+      return Promise.all(jobs).then(function () { return images; });
+    });
+  }
+
+  window.DiaryZip = { ZIP_NAME: ZIP_NAME, read: read, readImages: readImages, write: write };
 })();
