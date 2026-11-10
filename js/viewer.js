@@ -143,9 +143,11 @@
     return null;
   }
 
+  /** 画像は「YYYYMMDD/ファイル名」で探す。前の形式で保存したデータ（ファイル名だけ）も見る */
   function photosOf(entry) {
     var urls = state.data.urls;
-    return entry.images.filter(function (n) { return !!urls[n]; }).map(function (n) { return urls[n]; });
+    return entry.images.map(function (n) { return urls[DiaryZip.imageKey(entry.date, n)] || urls[n]; })
+      .filter(function (u) { return !!u; });
   }
 
   function matchesFilter(entry) {
