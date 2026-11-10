@@ -820,11 +820,16 @@
       var d = e.data;
       setData(buildData(d.setting, d.entries, d.images));
       state.authed = true; // パスワードなし
-      // 今日の月（範囲外なら開始月）を、今日を選んだ状態で開く
-      var today = D.today();
-      var idx = indexOfMonth(D.monthOf(today));
-      if (idx === -1) idx = state.spreads.length > 1 ? 1 : 0;
-      prepare(idx, idx === indexOfMonth(D.monthOf(today)) ? today : undefined);
+      // 作成用で見ていた日付の月を、その日を選んだ状態で開く。
+      // 指定がない・月の範囲外なら今日の月、それも範囲外なら開始月
+      var day = d.date && D.isValid(d.date) ? d.date : D.today();
+      var idx = indexOfMonth(D.monthOf(day));
+      if (idx === -1) {
+        day = D.today();
+        idx = indexOfMonth(D.monthOf(day));
+      }
+      if (idx === -1) { idx = state.spreads.length > 1 ? 1 : 0; day = undefined; }
+      prepare(idx, day);
       show(idx);
     });
     window.parent.postMessage({ type: 'diary-preview-ready' }, '*');
