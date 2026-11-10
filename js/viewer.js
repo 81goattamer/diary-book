@@ -291,7 +291,7 @@
     return h('div', { class: 'page-inner' },
       h('div', { class: 'setting-row' },
         h('h3', null, 'データの再インポート'),
-        h('p', null, '新しい DIARY_BOOK_DATA.zip を読み込み、今のデータと置き換えます。'),
+        h('p', null, '新しい日記データの ZIP を読み込み、今のデータと置き換えます。'),
         h('button', { class: 'btn', type: 'button', 'data-action': 'reimport' }, 'ZIP を選ぶ')),
       h('div', { class: 'setting-row' },
         h('h3', null, 'データの削除'),

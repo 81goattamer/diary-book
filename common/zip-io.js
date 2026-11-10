@@ -1,4 +1,6 @@
-/* 両アプリ共通：DIARY_BOOK_DATA.zip の読み書き（JSZip を使用） */
+/* 両アプリ共通：日記データの ZIP の読み書き（JSZip を使用）
+ * ZIP 自体の名前は問わない。中の DIARY_BOOK_SETTING.csv・DIARY_BOOK_MST.csv・DIARY_BOOK_IMAGE フォルダは名前どおりでないと読めない。
+ * 名前を決めずにエクスポートしたときの名前が ZIP_NAME。 */
 (function () {
   'use strict';
 
