@@ -496,22 +496,101 @@
     if (img) img.src = photos[state.photoIdx];
   }
 
+  /* ---------- めくる操作：矢印ボタン・ページの端を押す・長押ししてスライド ---------- */
+
+  var EDGE = 0.1;            // 本の左右それぞれ幅の 10% を「ページの端」とする
+  var HOLD_MS = 300;         // 長押しと判定するまでの時間
+  var HOLD_SLOP = 10;        // 長押し中に動いてもよい距離（px）
+  var SWIPE_PX = 40;         // 長押し後、この距離だけ横に動かしたらめくる
+
+  function canPrev() { return !state.busy && state.index > 0; }
+  function canNext() { return !state.busy && state.index > 0 && state.index < state.spreads.length - 1; }
+  function goPrev() { if (canPrev()) run(function () { return flip(state.index - 1); }); }
+  function goNext() { if (canNext()) run(function () { return flip(state.index + 1); }); }
+
+  /** 本の中での横位置（0〜1） */
+  function bookX(clientX) {
+    var r = el.book.getBoundingClientRect();
+    return (clientX - r.left) / r.width;
+  }
+
+  var drag = null;          // 長押しスライドの状態 { id, x, y, timer, held, done }
+  var suppressClick = false; // 長押しスライドの直後のクリックは無視する
+
   el.inner.addEventListener('click', function (e) {
+    if (suppressClick) { suppressClick = false; return; }
     var t = e.target.closest('[data-action]');
-    if (!t || state.busy) return;
-    var fn = actions[t.getAttribute('data-action')];
-    if (fn) fn(t);
+    if (t) {
+      if (state.busy) return;
+      var fn = actions[t.getAttribute('data-action')];
+      if (fn) fn(t);
+      return;
+    }
+    // ボタンなどがない場所で、ページの左端・右端を押したらめくる
+    if (state.spreads[state.index].kind === 'cover') return;
+    if (e.target.closest('button, input, textarea, a, .popover')) return;
+    var x = bookX(e.clientX);
+    if (x < EDGE) goPrev();
+    else if (x > 1 - EDGE) goNext();
   });
 
-  el.prev.addEventListener('click', function () {
-    if (state.busy || state.index === 0) return;
-    run(function () { return flip(state.index - 1); });
+  el.inner.addEventListener('pointerdown', function (e) {
+    if (drag || state.busy || state.spreads[state.index].kind === 'cover') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, held: false, done: false };
+    drag.timer = setTimeout(function () {
+      if (!drag) return;
+      drag.held = true;
+      el.book.classList.add('holding');
+    }, HOLD_MS);
   });
 
-  el.next.addEventListener('click', function () {
-    if (state.busy || state.index >= state.spreads.length - 1 || state.index === 0) return;
-    run(function () { return flip(state.index + 1); });
+  el.inner.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id || drag.done) return;
+    var dx = e.clientX - drag.x;
+    var dy = e.clientY - drag.y;
+    if (!drag.held) {
+      // 長押しになる前に動いたら、普通の操作（スクロールなど）として扱う
+      if (Math.abs(dx) > HOLD_SLOP || Math.abs(dy) > HOLD_SLOP) endDrag();
+      return;
+    }
+    e.preventDefault();
+    if (Math.abs(dx) < SWIPE_PX) return;
+    drag.done = true;
+    suppressClick = true;
+    el.book.classList.remove('holding');
+    if (dx < 0) goNext(); else goPrev(); // 左へスライドで次へ、右へスライドで前へ
   });
+
+  function endDrag() {
+    if (!drag) return;
+    clearTimeout(drag.timer);
+    if (drag.held) suppressClick = true; // 長押ししただけで離したときも、クリック扱いにしない
+    drag = null;
+    el.book.classList.remove('holding');
+    setTimeout(function () { suppressClick = false; }, 0);
+  }
+
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (t) {
+    el.inner.addEventListener(t, function (e) { if (drag && e.pointerId === drag.id) endDrag(); });
+  });
+
+  // マウスでページの端に乗ったら、押せることが分かるよう指のカーソルにする
+  el.inner.addEventListener('mousemove', function (e) {
+    var edge = false;
+    if (state.spreads[state.index].kind !== 'cover' && !e.target.closest('button, input, textarea, a, .popover')) {
+      var x = bookX(e.clientX);
+      edge = (x < EDGE && state.index > 0) || (x > 1 - EDGE && state.index < state.spreads.length - 1);
+    }
+    el.inner.style.cursor = edge ? 'pointer' : '';
+  });
+
+  // 長押し中に文字選択やメニューが出ないようにする
+  el.inner.addEventListener('contextmenu', function (e) { if (drag) e.preventDefault(); });
+  el.inner.addEventListener('selectstart', function (e) { if (drag && drag.held) e.preventDefault(); });
+
+  el.prev.addEventListener('click', goPrev);
+  el.next.addEventListener('click', goNext);
 
   el.sound.addEventListener('click', function () { DiarySound.toggle(); });
 
