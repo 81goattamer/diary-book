@@ -6,6 +6,12 @@
   var $ = function (id) { return document.getElementById(id); };
 
   var DB_NAME = 'diarybook-viewer';
+  /**
+   * 確認用モード（作成用アプリの「本番環境で確認」から iframe で開く。URL に ?preview=1）。
+   * データは作成用アプリから postMessage で受け取り、端末には保存しない。
+   * パスワードなし・アニメーションなし（めくりは一瞬で切り替える）。
+   */
+  var PREVIEW = /[?&]preview=1(&|$)/.test(location.search) && window.parent !== window;
   var FLIP_MS = 650;          // 通常のページめくり
   var COVER_MS = 1000;        // 本の開閉
   var PARA_MS = 150;          // パラパラめくり1枚あたり
@@ -265,6 +271,10 @@
         box.appendChild(h('button', { class: 'photo-nav photo-prev', type: 'button', 'data-action': 'photo-prev', 'aria-label': '前の写真' }, '‹'));
         box.appendChild(h('button', { class: 'photo-nav photo-next', type: 'button', 'data-action': 'photo-next', 'aria-label': '次の写真' }, '›'));
       }
+      // 右下の拡大ボタン：その日の写真を画面いっぱいで見る
+      var zoom = h('button', { class: 'photo-zoom', type: 'button', 'data-action': 'photo-zoom', 'aria-label': '写真を拡大', title: '写真を拡大' });
+      zoom.innerHTML = ZOOM_ICON;
+      box.appendChild(zoom);
       scroll.appendChild(box);
     }
     if (entry.contents) scroll.appendChild(h('div', { class: 'diary-body' }, entry.contents));
@@ -334,6 +344,12 @@
    */
   function flip(target, opt) {
     opt = opt || {};
+    if (PREVIEW) {
+      // 確認用モードはアニメーション・効果音なしで切り替える
+      prepare(target, opt.select);
+      show(target);
+      return Promise.resolve();
+    }
     var from = state.index;
     var dir = target > from ? 1 : -1;
     var coverFrom = state.spreads[from].kind === 'cover';
@@ -471,6 +487,7 @@
     },
     'photo-prev': function () { stepPhoto(-1); },
     'photo-next': function () { stepPhoto(1); },
+    'photo-zoom': function () { openLightbox(); },
     sound: function () { DiarySound.toggle(); },
     reimport: function () { el.reimport.value = ''; el.reimport.click(); },
     delete: function () {
@@ -495,6 +512,80 @@
     var img = el.right.querySelector('.photo img');
     if (img) img.src = photos[state.photoIdx];
   }
+
+  /* ---------- 写真の拡大表示 ---------- */
+
+  var ZOOM_ICON = '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+
+  var lb = null; // { root, img, count, photos, idx }
+
+  /** 今表示している日の写真を、今の写真から画面いっぱいで表示する */
+  function openLightbox() {
+    var entry = state.data && state.data.byDate[state.selected];
+    if (!entry || lb) return;
+    var photos = photosOf(entry);
+    if (!photos.length) return;
+    var img = h('img', { class: 'lightbox-img', alt: '', draggable: 'false' });
+    var count = h('div', { class: 'lightbox-count' });
+    var root = h('div', { class: 'lightbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': '写真の拡大表示' },
+      img, count,
+      h('button', { class: 'lightbox-close', type: 'button', 'data-lb': 'close', 'aria-label': '閉じる' }, '×'));
+    if (photos.length > 1) {
+      root.appendChild(h('button', { class: 'lightbox-nav lightbox-prev', type: 'button', 'data-lb': 'prev', 'aria-label': '前の写真' }, '‹'));
+      root.appendChild(h('button', { class: 'lightbox-nav lightbox-next', type: 'button', 'data-lb': 'next', 'aria-label': '次の写真' }, '›'));
+    }
+    lb = { root: root, img: img, count: count, photos: photos, idx: Math.min(state.photoIdx, photos.length - 1), sx: null };
+    showLightboxPhoto();
+
+    root.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-lb]');
+      if (t) {
+        var a = t.getAttribute('data-lb');
+        if (a === 'close') closeLightbox();
+        else stepLightbox(a === 'next' ? 1 : -1);
+        return;
+      }
+      if (e.target === root) closeLightbox(); // 写真の外（暗いところ）を押したら閉じる
+    });
+    // 左右にスワイプしても前後の写真へ
+    root.addEventListener('pointerdown', function (e) { lb.sx = e.clientX; });
+    root.addEventListener('pointerup', function (e) {
+      if (lb.sx === null) return;
+      var dx = e.clientX - lb.sx;
+      lb.sx = null;
+      if (Math.abs(dx) > 50 && lb.photos.length > 1) stepLightbox(dx < 0 ? 1 : -1);
+    });
+    document.body.appendChild(root);
+    root.querySelector('.lightbox-close').focus();
+  }
+
+  function showLightboxPhoto() {
+    lb.img.src = lb.photos[lb.idx];
+    lb.count.textContent = lb.photos.length > 1 ? (lb.idx + 1) + ' / ' + lb.photos.length : '';
+  }
+
+  function stepLightbox(step) {
+    if (lb.photos.length < 2) return;
+    lb.idx = (lb.idx + step + lb.photos.length) % lb.photos.length;
+    showLightboxPhoto();
+  }
+
+  /** 閉じたら、本の写真も拡大で最後に見ていた写真にそろえる */
+  function closeLightbox() {
+    if (!lb) return;
+    state.photoIdx = lb.idx;
+    var img = el.right.querySelector('.photo img');
+    if (img) img.src = lb.photos[lb.idx];
+    lb.root.remove();
+    lb = null;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (!lb) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowRight') stepLightbox(1);
+    else if (e.key === 'ArrowLeft') stepLightbox(-1);
+  });
 
   /* ---------- めくる操作：矢印ボタン・ページの端を押す・長押ししてスライド ---------- */
 
@@ -721,6 +812,24 @@
   layout();
   updateChrome();
   show(0);
+
+  if (PREVIEW) {
+    document.documentElement.classList.add('preview');
+    window.addEventListener('message', function (e) {
+      if (e.source !== window.parent || !e.data || e.data.type !== 'diary-preview') return;
+      var d = e.data;
+      setData(buildData(d.setting, d.entries, d.images));
+      state.authed = true; // パスワードなし
+      // 今日の月（範囲外なら開始月）を、今日を選んだ状態で開く
+      var today = D.today();
+      var idx = indexOfMonth(D.monthOf(today));
+      if (idx === -1) idx = state.spreads.length > 1 ? 1 : 0;
+      prepare(idx, idx === indexOfMonth(D.monthOf(today)) ? today : undefined);
+      show(idx);
+    });
+    window.parent.postMessage({ type: 'diary-preview-ready' }, '*');
+    return; // 確認用モードでは端末のデータを読み書きしない
+  }
 
   DiaryStorage.open(DB_NAME, ['kv', 'images'])
     .then(function (db) {

@@ -508,6 +508,88 @@ button {
 .photo-prev { left: 0.4em; }
 .photo-next { right: 0.4em; }
 
+/* 写真の右下の拡大ボタン */
+.photo-zoom {
+  position: absolute;
+  right: 0.4em;
+  bottom: 0.4em;
+  width: 1.9em;
+  height: 1.9em;
+  border-radius: 0.4em;
+  border: 0;
+  background: rgba(43, 29, 20, 0.62);
+  color: #fbf3df;
+  font-size: 1em;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- 写真の拡大表示 ---------- */
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(12, 8, 5, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.lightbox-img {
+  max-width: calc(100vw - 140px);
+  max-height: calc(100vh - 90px);
+  object-fit: contain;
+  display: block;
+  -webkit-user-drag: none;
+}
+
+.lightbox-close,
+.lightbox-nav {
+  position: absolute;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(251, 243, 223, 0.14);
+  color: #fbf3df;
+  padding: 0;
+}
+
+.lightbox-close {
+  top: 14px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  font-size: 28px;
+  line-height: 44px;
+}
+
+.lightbox-nav {
+  top: 50%;
+  margin-top: -26px;
+  width: 52px;
+  height: 52px;
+  font-size: 32px;
+  line-height: 52px;
+}
+
+.lightbox-prev { left: 16px; }
+.lightbox-next { right: 16px; }
+
+.lightbox-count {
+  position: absolute;
+  bottom: 16px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #e9dcc0;
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  pointer-events: none; /* 下の暗いところを押したら閉じられるように */
+}
+
 .diary-body {
   white-space: pre-wrap;
   word-break: break-word;
