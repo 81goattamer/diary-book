@@ -17,8 +17,6 @@
   var LAST_FLIP_MS = 300;                     // パラパラめくりの最後の1枚
 
   var TEXT = {
-    future: 'これからの未来はお楽しみに',
-    rest: 'この日はお休み！',
     choose: '日付を選んでください',
     wrongPw: 'パスワードが違います',
     confirmReplace: '今のデータを置き換えます。よろしいですか？',
@@ -54,7 +52,6 @@
     busy: false,
     selected: null,      // 右ページに表示している日（YYYYMMDD）
     photoIdx: 0,
-    note: '',            // 日記がない日に表示する文章
     tagFilter: [],
     popover: null,       // 'month' | 'tag' | null
     settingMsg: ''
@@ -156,15 +153,10 @@
     return entry.tags.some(function (t) { return state.tagFilter.indexOf(t) !== -1; });
   }
 
-  /** 日付を選ぶ。日記がない日の文章はここで毎回ランダムに選び直す */
+  /** 日付を選ぶ。日記がない日は選ばない（何も選んでいない状態にする） */
   function select(date) {
-    state.selected = date;
+    state.selected = date && state.data.byDate[date] ? date : null;
     state.photoIdx = 0;
-    state.note = '';
-    if (!date || state.data.byDate[date]) return;
-    if (date > D.today()) { state.note = TEXT.future; return; }
-    var list = state.data.setting.randoms;
-    state.note = list.length ? list[Math.floor(Math.random() * list.length)] : TEXT.rest;
   }
 
   /** 見開きを表示する前の準備。月ページは selectDate（省略時はその月で日記がある最初の日）を選ぶ */
@@ -218,7 +210,7 @@
       var entry = state.data.byDate[date];
       var on = !!entry && matchesFilter(entry);
       grid.appendChild(h('button', {
-        class: 'day ' + (on ? 'on' : 'off') + (date === state.selected ? ' selected' : ''),
+        class: 'day ' + (on ? 'on' : 'off') + (entry ? '' : ' none') + (date === state.selected ? ' selected' : ''),
         type: 'button', 'data-action': 'day', 'data-date': date
       }, d));
     }
@@ -260,11 +252,6 @@
       return inner;
     }
     var entry = state.data.byDate[date];
-    if (!entry) {
-      inner.appendChild(h('div', { class: 'diary-date' }, D.formatDate(date)));
-      inner.appendChild(h('div', { class: 'diary-empty' }, h('p', { class: 'diary-note' }, state.note)));
-      return inner;
-    }
     var scroll = h('div', { class: 'diary-scroll' }, h('div', { class: 'diary-date' }, D.formatDate(date)));
     if (entry.title) scroll.appendChild(h('h2', { class: 'diary-title' }, entry.title));
     if (entry.tags.length) scroll.appendChild(h('div', { class: 'diary-tags' }, entry.tags.map(function (t) { return h('span', { class: 'tag' }, t); })));
@@ -475,7 +462,9 @@
       run(function () { return flip(target); });
     },
     day: function (t) {
-      select(t.getAttribute('data-date'));
+      var date = t.getAttribute('data-date');
+      if (!state.data.byDate[date]) return; // 日記がない日は押しても何もしない
+      select(date);
       refreshSide();
     },
     'photo-prev': function () { stepPhoto(-1); },

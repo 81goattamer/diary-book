@@ -325,6 +325,11 @@ button {
   color: #5f574d;
 }
 
+/* 日記がない日は押せない */
+.day.none {
+  cursor: default;
+}
+
 .day.selected {
   outline: 0.16em solid var(--accent);
   outline-offset: -0.16em;

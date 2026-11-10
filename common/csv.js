@@ -36,18 +36,18 @@
 
   function joinList(list) { return (list || []).join(';'); }
 
-  /** SETTING → { password, name, message, randoms[] } */
+  /** SETTING → { password, name, message }。前の形式（4列目にランダム文章）も読めるよう、4列なら4列目を捨てる */
   function parseSetting(text) {
     var rows = parseRows(text);
-    if (rows.length < 1 || rows[0].length !== 4) {
-      throw FormatError(SETTING_FILE + ' の形式が正しくありません（1行4列ではありません）');
+    if (rows.length < 1 || (rows[0].length !== 3 && rows[0].length !== 4)) {
+      throw FormatError(SETTING_FILE + ' の形式が正しくありません（1行3列ではありません）');
     }
     var r = rows[0];
-    return { password: r[0], name: r[1], message: r[2], randoms: splitList(r[3]) };
+    return { password: r[0], name: r[1], message: r[2] };
   }
 
   function buildSetting(s) {
-    return stringifyRows([[s.password || '', s.name || '', s.message || '', joinList(s.randoms)]]);
+    return stringifyRows([[s.password || '', s.name || '', s.message || '']]);
   }
 
   /** MST → [{ date, tags[], title, contents, images[] }]（日付の昇順） */

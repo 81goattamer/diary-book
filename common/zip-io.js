@@ -57,7 +57,7 @@
 
   /**
    * ZIP を作る。
-   * @param setting { password, name, message, randoms[] }
+   * @param setting { password, name, message }
    * @param entries [{ date, tags[], title, contents, images: [{ name, blob }] }]
    * @returns {Promise<Blob>}
    */
