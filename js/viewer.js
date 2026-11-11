@@ -60,8 +60,42 @@
     photoIdx: 0,
     tagFilter: [],
     popover: null,       // 'month' | 'tag' | null
-    settingMsg: ''
+    settingMsg: '',
+    bh: 560              // 本の高さ（px）。layout() で決める
   };
+
+  /* ---------- 紙・革の質感を画像にしておく ----------
+   * 質感は CSS 変数の SVG（feTurbulence のフィルタ）で描いている。SVG のままだと、ページを作るたび・
+   * めくるたびにフィルタを計算し直して重い（特に iPad）。起動時に1回だけ画像（PNG）に焼いて差し替える。
+   * 焼けないときは SVG のまま使う。 */
+
+  function bakeTextures() {
+    var root = document.documentElement;
+    var cs = getComputedStyle(root);
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    // 細かい粒（タイル）は画面の解像度で、ぼんやりした模様（引き伸ばす）は等倍で焼く
+    [['--grain-leather', dpr], ['--grain-paper', dpr], ['--mottle-leather', 1], ['--stain-paper', 1]].forEach(function (v) {
+      var m = /url\("(data:image\/svg\+xml,[^"]*)"\)/.exec(cs.getPropertyValue(v[0]));
+      if (!m) return;
+      var src = m[1];
+      var size = /width='(\d+)'/.exec(decodeURIComponent(src));
+      if (!size) return;
+      var px = Math.round(Number(size[1]) * v[1]);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var c = document.createElement('canvas');
+          c.width = px;
+          c.height = px;
+          c.getContext('2d').drawImage(img, 0, 0, px, px);
+          c.toBlob(function (blob) {
+            if (blob) root.style.setProperty(v[0], 'url("' + URL.createObjectURL(blob) + '")');
+          }, 'image/png');
+        } catch (e) { /* SVG のまま */ }
+      };
+      img.src = src;
+    });
+  }
 
   /* ---------- 小さな DOM ヘルパー ---------- */
 
@@ -181,12 +215,15 @@
     return h('div', { class: 'half half-' + side }, h('div', { class: 'paper' }, content));
   }
 
-  function render(sp) {
+  /** 見開きを作る。only（'left' / 'right'）を指定したときは、その側だけ作る */
+  function render(sp, only) {
+    var L = only !== 'right';
+    var R = only !== 'left';
     switch (sp.kind) {
-      case 'cover': return { left: null, right: renderCover() };
-      case 'month': return { left: half('left', renderCalendar(sp.ym)), right: half('right', renderDiary()) };
-      case 'message': return { left: half('left', renderMessage()), right: half('right', renderMessage()) };
-      default: return { left: half('left', renderSettingsLeft()), right: half('right', renderSettingsRight()) };
+      case 'cover': return { left: null, right: R ? renderCover() : null };
+      case 'month': return { left: L ? half('left', renderCalendar(sp.ym)) : null, right: R ? half('right', renderDiary()) : null };
+      case 'message': return { left: L ? half('left', renderMessage()) : null, right: R ? half('right', renderMessage()) : null };
+      default: return { left: L ? half('left', renderSettingsLeft()) : null, right: R ? half('right', renderSettingsRight()) : null };
     }
   }
 
@@ -266,7 +303,7 @@
     var photos = photosOf(entry);
     if (photos.length) {
       var idx = Math.min(state.photoIdx, photos.length - 1);
-      var box = h('div', { class: 'photo' }, h('img', { src: photos[idx], alt: '', draggable: 'false' }));
+      var box = h('div', { class: 'photo' }, h('img', { src: photos[idx], alt: '', draggable: 'false', decoding: 'async' }));
       if (photos.length > 1) {
         box.appendChild(h('button', { class: 'photo-nav photo-prev', type: 'button', 'data-action': 'photo-prev', 'aria-label': '前の写真' }, '‹'));
         box.appendChild(h('button', { class: 'photo-nav photo-next', type: 'button', 'data-action': 'photo-next', 'aria-label': '次の写真' }, '›'));
@@ -321,7 +358,7 @@
   }
 
   function refreshSide(side) {
-    var r = render(state.spreads[state.index]);
+    var r = render(state.spreads[state.index], side);
     if (side !== 'right') setChild(el.left, r.left);
     if (side !== 'left') setChild(el.right, r.right);
   }
@@ -384,7 +421,7 @@
 
     if (!withCover) DiarySound.flip(opt.sound || 0.4);
 
-    var persp = Math.round(el.book.clientHeight * 4);
+    var persp = state.bh * 4; // 本の高さは layout() で決めた値を使う（ここで DOM から読むと、作ったばかりのページの計算を待つことになる）
     var anims = [leaf.animate([
       { transform: 'perspective(' + persp + 'px) rotateY(0deg)' },
       { transform: 'perspective(' + persp + 'px) rotateY(' + (dir > 0 ? -180 : 180) + 'deg)' }
@@ -487,7 +524,10 @@
       var date = t.getAttribute('data-date');
       if (!state.data.byDate[date]) return; // 日記がない日は押しても何もしない
       select(date);
-      refreshSide();
+      // カレンダーは作り直さず、選んだ日の枠だけ付け替える。右ページ（日記）だけ描き直す
+      Array.prototype.forEach.call(el.left.querySelectorAll('.day.selected'), function (b) { b.classList.remove('selected'); });
+      t.classList.add('selected');
+      refreshSide('right');
     },
     'photo-prev': function () { stepPhoto(-1); },
     'photo-next': function () { stepPhoto(1); },
@@ -811,6 +851,7 @@
       bh = Math.floor(Math.min(H - 120, (W - 130) / 1.44));
       top = Math.round((H - bh) / 2);
     }
+    state.bh = bh;
     document.documentElement.style.setProperty('--bh', bh + 'px');
     document.documentElement.style.setProperty('--book-top', top + 'px');
   }
@@ -829,6 +870,7 @@
       });
   }
 
+  bakeTextures();
   layout();
   updateChrome();
   show(0);

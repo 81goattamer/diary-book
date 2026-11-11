@@ -78,8 +78,14 @@ button {
   cursor: grabbing;
 }
 
-.book.holding .slot {
-  filter: brightness(0.97);
+/* ページ全体に filter をかけると描き直しが重いので、薄い影を1枚重ねる */
+.book.holding .book-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: rgba(0, 0, 0, 0.03);
+  pointer-events: none;
 }
 
 .book-inner.closed {
@@ -88,6 +94,7 @@ button {
 
 .slot {
   position: absolute;
+  contain: layout; /* 中身が変わっても、外側（本全体）の計算をやり直さない */
   top: 0;
   width: 50%;
   height: 100%;
@@ -101,6 +108,7 @@ button {
   position: absolute;
   inset: 0;
   overflow: hidden;
+  contain: layout paint; /* 片方のページの変化で、本全体を計算し直さない */
   background: var(--grain-leather), var(--mottle-leather), var(--leather-base);
   background-size: 260px 260px, 100% 100%, cover;
 }
