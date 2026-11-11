@@ -257,6 +257,7 @@ button {
 
 .face-back {
   transform: rotateY(180deg);
+  visibility: hidden; /* めくりの途中（90°）で JS が表示に切り替える */
 }
 
 /* ---------- カレンダー（左ページ） ---------- */

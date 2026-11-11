@@ -401,49 +401,90 @@
     prepare(target, opt.select);
     var next = render(state.spreads[target]);
 
+    // 右ページをめくる（次へ）：表は今の右ページ、裏は次の左ページ。下からは次の右ページが見え、葉は左に着く。
+    // 左ページを戻す（前へ）：表は今の左ページ、裏は前の右ページ。下からは前の左ページが見え、葉は右に着く。
+    var turning = dir > 0 ? el.right : el.left;       // めくれるページがある側
+    var landing = dir > 0 ? el.left : el.right;       // 葉が着く側
+    var under = dir > 0 ? next.right : next.left;     // めくると下から見えるページ
+    var landed = dir > 0 ? next.left : next.right;    // 葉の裏に出て、最後に着くページ
+
+    // 葉には今のページ・次のページの「写し」を貼る。本物のページは、葉の描画が済んでから入れ替える。
+    // 同じ瞬間に入れ替えると、iPad では葉の描画が1コマ遅れて下のページが一瞬見える（点滅する）
     var front = h('div', { class: 'face face-front' });
     var back = h('div', { class: 'face face-back' });
+    var current = turning.firstElementChild;
+    if (current) front.appendChild(copyPage(current));
+    if (landed) back.appendChild(copyPage(landed));
     var leaf = h('div', { class: 'leaf ' + (dir > 0 ? 'leaf-right' : 'leaf-left') }, front, back);
-
-    if (dir > 0) {
-      // 右ページをめくる：表は今の右ページ、裏は次の左ページ。下からは次の右ページが見える
-      if (el.right.firstElementChild) front.appendChild(el.right.firstElementChild);
-      if (next.left) back.appendChild(next.left);
-      setChild(el.right, next.right);
-    } else {
-      // 左ページを戻す：表は今の左ページ、裏は前の右ページ。下からは前の左ページが見える
-      if (el.left.firstElementChild) front.appendChild(el.left.firstElementChild);
-      back.appendChild(next.right);
-      setChild(el.left, next.left);
-    }
     el.inner.appendChild(leaf);
+    copyScroll(current, front.firstElementChild);
     state.index = target;
 
-    if (!withCover) DiarySound.flip(opt.sound || 0.4);
+    var anims = [];
+    return whenPainted(leaf).then(function () {
+      setChild(turning, under); // 葉に隠れているので、ここで入れ替えても見えない
+      if (!withCover) DiarySound.flip(opt.sound || 0.4);
 
-    var persp = state.bh * 4; // 本の高さは layout() で決めた値を使う（ここで DOM から読むと、作ったばかりのページの計算を待つことになる）
-    var anims = [leaf.animate([
-      { transform: 'perspective(' + persp + 'px) rotateY(0deg)' },
-      { transform: 'perspective(' + persp + 'px) rotateY(' + (dir > 0 ? -180 : 180) + 'deg)' }
-    ], { duration: dur, easing: opt.easing || EASE, fill: 'forwards' })];
+      var persp = state.bh * 4; // 本の高さは layout() で決めた値を使う（DOM から読むと、作ったばかりのページの計算を待つことになる）
+      var timing = { duration: dur, easing: opt.easing || EASE, fill: 'forwards' };
+      anims.push(leaf.animate([
+        { transform: 'perspective(' + persp + 'px) rotateY(0deg)' },
+        { transform: 'perspective(' + persp + 'px) rotateY(' + (dir > 0 ? -180 : 180) + 'deg)' }
+      ], timing));
+      // 表と裏は、回転がちょうど半分（90°）になったところで切り替える。
+      // Safari では backface-visibility が一瞬効かず、裏の面が左右反転して見えることがあるため、CSS だけに任せない
+      anims.push(front.animate([{ visibility: 'visible' }, { visibility: 'hidden' }], timing));
+      anims.push(back.animate([{ visibility: 'hidden' }, { visibility: 'visible' }], timing));
 
-    if (withCover) {
-      // 閉じた本は右半分（表紙）が画面中央に来るよう左へずらしてある
-      el.inner.classList.remove('closed');
-      anims.push(el.inner.animate([
-        { transform: coverFrom ? 'translateX(-25%)' : 'translateX(0)' },
-        { transform: coverTo ? 'translateX(-25%)' : 'translateX(0)' }
-      ], { duration: dur, easing: opt.easing || EASE, fill: 'forwards' }));
-    }
-
-    return Promise.all(anims.map(function (a) { return a.finished; })).then(function () {
-      if (dir > 0) setChild(el.left, next.left);
-      else setChild(el.right, next.right);
+      if (withCover) {
+        // 閉じた本は右半分（表紙）が画面中央に来るよう左へずらしてある
+        el.inner.classList.remove('closed');
+        anims.push(el.inner.animate([
+          { transform: coverFrom ? 'translateX(-25%)' : 'translateX(0)' },
+          { transform: coverTo ? 'translateX(-25%)' : 'translateX(0)' }
+        ], timing));
+      }
+      return Promise.all(anims.map(function (a) { return a.finished; }));
+    }).then(function () {
+      // 着いた葉の下に本物のページを置き、描画が済んでから葉を外す
+      setChild(landing, landed);
+      return whenPainted(landing);
+    }).then(function () {
       leaf.remove();
       el.inner.classList.toggle('closed', coverTo);
       anims.forEach(function (a) { a.cancel(); });
       updateChrome();
     });
+  }
+
+  /** めくる葉に貼るページの写し */
+  function copyPage(page) {
+    return page.cloneNode(true);
+  }
+
+  /** 写しの日記の文章を、元のページと同じスクロール位置にする（写しが画面に入ってから呼ぶ） */
+  function copyScroll(page, copy) {
+    if (!page || !copy) return;
+    var from = page.querySelectorAll('.diary-scroll');
+    var to = copy.querySelectorAll('.diary-scroll');
+    for (var i = 0; i < to.length && i < from.length; i++) {
+      if (from[i].scrollTop) to[i].scrollTop = from[i].scrollTop;
+    }
+  }
+
+  /** node の中の写真が読み込まれ、画面に2回描かれる（＝描画が済む）まで待つ。止まらないよう 300ms で打ち切る */
+  function whenPainted(node) {
+    var imgs = node ? Array.prototype.slice.call(node.querySelectorAll('img')) : [];
+    var decoded = Promise.all(imgs.map(function (img) {
+      return img.decode ? img.decode().catch(function () {}) : null;
+    }));
+    var painted = decoded.then(function () {
+      return new Promise(function (resolve) {
+        requestAnimationFrame(function () { requestAnimationFrame(resolve); });
+      });
+    });
+    var limit = new Promise(function (resolve) { setTimeout(resolve, 300); });
+    return Promise.race([painted, limit]);
   }
 
   /** めくっている途中の操作は無視する */
