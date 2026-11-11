@@ -21,6 +21,10 @@
   --serif: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif;
 }
 
+html {
+  background: #160e09; /* iPad などで画面の下端に白い帯が出ないようにする */
+}
+
 body {
   overflow: hidden;
   background:
@@ -64,8 +68,9 @@ button {
   position: absolute;
   inset: 0;
   will-change: transform;
-  /* 横方向の指の動きは「長押ししてスライド」でめくるのに使う */
+  /* 横方向の指の動き（スワイプ・長押ししてスライド）はめくるのに使う */
   touch-action: pan-y;
+  -webkit-touch-callout: none; /* iPad などで長押ししてもメニューを出さない */
 }
 
 /* 長押ししている間（このまま左右にスライドするとめくれる） */

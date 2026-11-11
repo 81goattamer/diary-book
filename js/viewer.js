@@ -330,7 +330,11 @@
     var kind = state.spreads[state.index].kind;
     el.prev.hidden = kind === 'cover';
     el.next.hidden = kind === 'cover' || kind === 'settings';
-    el.loadPanel.hidden = !(kind === 'cover' && !state.data);
+    var loadHidden = !(kind === 'cover' && !state.data);
+    if (el.loadPanel.hidden !== loadHidden) {
+      el.loadPanel.hidden = loadHidden;
+      layout(); // 読み込み欄の有無で本の大きさが変わる
+    }
     el.pwPanel.hidden = !(kind === 'cover' && state.data && !state.authed && state.showPw);
     el.sound.textContent = '♪ 音 ' + soundLabel();
     el.sound.setAttribute('aria-pressed', DiarySound.isOn() ? 'true' : 'false');
@@ -628,7 +632,7 @@
   el.inner.addEventListener('pointerdown', function (e) {
     if (drag || state.busy || state.spreads[state.index].kind === 'cover') return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, held: false, done: false };
+    drag = { id: e.pointerId, x: e.clientX, y: e.clientY, held: false, swipe: false, done: false };
     drag.timer = setTimeout(function () {
       if (!drag) return;
       drag.held = true;
@@ -640,13 +644,21 @@
     if (!drag || e.pointerId !== drag.id || drag.done) return;
     var dx = e.clientX - drag.x;
     var dy = e.clientY - drag.y;
-    if (!drag.held) {
-      // 長押しになる前に動いたら、普通の操作（スクロールなど）として扱う
-      if (Math.abs(dx) > HOLD_SLOP || Math.abs(dy) > HOLD_SLOP) endDrag();
-      return;
+    if (!drag.held && !drag.swipe) {
+      if (Math.abs(dx) <= HOLD_SLOP && Math.abs(dy) <= HOLD_SLOP) return;
+      // 長押しの前に動いたとき：指（タッチ・ペン）で横向きに動かしたらスワイプとしてめくる。
+      // 縦向き（スクロール）やマウスでのドラッグ（文字の選択など）はめくらない
+      if (e.pointerType !== 'mouse' && Math.abs(dx) > Math.abs(dy)) {
+        clearTimeout(drag.timer);
+        drag.swipe = true;
+      } else {
+        endDrag();
+        return;
+      }
     }
     e.preventDefault();
     if (Math.abs(dx) < SWIPE_PX) return;
+    if (drag.swipe && Math.abs(dx) < Math.abs(dy) * 1.5) { endDrag(); return; } // 斜めすぎるものはめくらない
     drag.done = true;
     suppressClick = true;
     el.book.classList.remove('holding');
@@ -656,7 +668,7 @@
   function endDrag() {
     if (!drag) return;
     clearTimeout(drag.timer);
-    if (drag.held) suppressClick = true; // 長押ししただけで離したときも、クリック扱いにしない
+    if (drag.held || drag.swipe) suppressClick = true; // 長押し・スワイプしただけで離したときも、クリック扱いにしない
     drag = null;
     el.book.classList.remove('holding');
     setTimeout(function () { suppressClick = false; }, 0);
@@ -789,8 +801,16 @@
   function layout() {
     var W = window.innerWidth;
     var H = window.innerHeight;
-    var bh = Math.floor(Math.min(H * 0.76, (W - 130) / 1.44));
-    var top = Math.max(8, Math.round((H - bh) / 2 - H * 0.07));
+    var bh, top;
+    if (!el.loadPanel.hidden) {
+      // 表紙の下に ZIP の読み込み欄を出すときは、その分だけ本を小さくして上に寄せる
+      bh = Math.floor(Math.min(H * 0.76, (W - 130) / 1.44));
+      top = Math.max(8, Math.round((H - bh) / 2 - H * 0.07));
+    } else {
+      // 画面いっぱいに、上下中央に置く（左右は矢印、上は「音」ボタンの分だけ空ける）
+      bh = Math.floor(Math.min(H - 120, (W - 130) / 1.44));
+      top = Math.round((H - bh) / 2);
+    }
     document.documentElement.style.setProperty('--bh', bh + 'px');
     document.documentElement.style.setProperty('--book-top', top + 'px');
   }
