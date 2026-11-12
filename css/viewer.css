@@ -198,6 +198,12 @@ button {
   padding: 2em 1.6em;
 }
 
+/* データがあるときは、表紙の下の方にパスワード欄が出る（本の高さの 60% から）。
+ * 日記の名前（改行して複数行にもできる）は、その上の範囲で中央に置く。本の高さは 34em */
+.cover-frame.with-pw {
+  padding-bottom: 12.6em;
+}
+
 .cover-frame::before,
 .cover-frame::after {
   content: "❦";
@@ -218,6 +224,7 @@ button {
   letter-spacing: 0.12em;
   line-height: 1.35;
   word-break: break-word;
+  white-space: pre-line; /* 日記の名前の改行をそのまま表示する */
   background: linear-gradient(180deg, #f3e2b0 0%, #d6b46a 45%, #a9823f 100%);
   -webkit-background-clip: text;
   background-clip: text;

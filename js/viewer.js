@@ -230,7 +230,7 @@
   function renderCover() {
     var name = state.data && state.data.setting.name ? state.data.setting.name : 'diary book';
     return h('div', { class: 'half half-right cover', 'data-action': 'cover' },
-      h('div', { class: 'cover-frame' },
+      h('div', { class: 'cover-frame' + (state.data ? ' with-pw' : '') },
         h('div', { class: 'cover-title' }, name),
         h('div', { class: 'cover-rule' })));
   }
